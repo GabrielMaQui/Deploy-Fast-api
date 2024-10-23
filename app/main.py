@@ -4,11 +4,20 @@ from sqlalchemy.orm import Session
 from . import models, schemas, crud
 from .database import SessionLocal, engine
 from datetime import datetime
+from fastapi.middleware.cors import CORSMiddleware
 
 # Crea las tablas en la base de datos
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Permitir todas las solicitudes de cualquier origen
+    allow_credentials=True,
+    allow_methods=["*"],  # Permitir todos los métodos (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],  # Permitir todas las cabeceras
+)
 
 # Dependency para obtener la sesión de la base de datos
 def get_db():
@@ -34,7 +43,7 @@ def get_tareas_by_usuario(idUsuario: int, db: Session = Depends(get_db)):
 
 @app.get("/tareas/usuario/{idUsuario}/incompletas/", response_model=int)
 def get_incomplete_tareas_by_usuario(idUsuario: int, db: Session = Depends(get_db)):
-    
+
     tareas_incompletas = crud.get_incomplete_tareas_by_usuario(db, idUsuario)
     return tareas_incompletas
 
@@ -61,7 +70,7 @@ def create_usuario(usuario: schemas.UsuarioCreate, db: Session = Depends(get_db)
     usuario_existente = db.query(models.Usuario).filter(models.Usuario.gmail == usuario.gmail).first()
     if usuario_existente:
         raise HTTPException(status_code=400, detail="El correo ya está registrado")
-    
+
     return crud.create_usuario(db=db, usuario=usuario)
 
 ############ CURSO ############
@@ -87,7 +96,7 @@ def update_curso(curso_id: int, curso_update: schemas.CursoUpdate, db: Session =
     curso = db.query(models.Curso).filter(models.Curso.id == curso_id).first()
     if not curso:
         raise HTTPException(status_code=404, detail="Curso no encontrado")
-    
+
     curso.docente = curso_update.docente
     curso.nombre = curso_update.nombre
     curso.creditos = curso_update.creditos
@@ -134,7 +143,7 @@ def create_tarea_docente(tarea: schemas.TareaDocenteCreate, db: Session = Depend
         )
         db.add(nueva_tarea_usuario)
     db.commit()
-    
+
     return nueva_tarea
 
 @app.put("/tareas-docente/{tarea_id}/", response_model=schemas.TareaDocenteResponse)
@@ -142,7 +151,7 @@ def update_tarea_docente(tarea_id: int, tarea_update: schemas.TareaDocenteUpdate
     tarea = db.query(models.TareaDocente).filter(models.TareaDocente.id == tarea_id).first()
     if not tarea:
         raise HTTPException(status_code=404, detail="Tarea no encontrada")
-    
+
     tarea.descripcion = tarea_update.descripcion
     tarea.fecha_fin = datetime.strptime(tarea_update.fecha_fin, "%d/%m/%y %H:%M")
     db.commit()
